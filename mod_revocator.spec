@@ -5,7 +5,7 @@
 
 Name: mod_revocator
 Version: 1.0.3
-Release: 17%{?dist}
+Release: 19%{?dist}
 Summary: CRL retrieval module for the Apache HTTP server
 Group: System Environment/Daemons
 License: ASL 2.0
@@ -138,6 +138,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/crlhelper
 
 %changelog
+* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1.0.3-19
+- Mass rebuild 2014-01-24
+
+* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 1.0.3-18
+- Mass rebuild 2013-12-27
+
 * Tue Jul  9 2013 Matthew Harmsen <mharmsen@redhat.com> - 1.0.3-17
 - Add the following explanation to the 'Brewtap results' textbox in rpmdiff:
   The '/etc/httpd/conf.d/revocator.conf' file does not require a man page
