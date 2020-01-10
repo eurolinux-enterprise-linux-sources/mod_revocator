@@ -1,6 +1,6 @@
 Name: mod_revocator
 Version: 1.0.3
-Release: 1%{?dist}
+Release: 9%{?dist}
 Summary: CRL retrieval module for the Apache HTTP server
 Group: System Environment/Daemons
 License: ASL 2.0
@@ -9,12 +9,16 @@ Source: http://directory.fedora.redhat.com/sources/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: nspr-devel >= 4.6, nss-devel >= 3.11.9
 BuildRequires: nss-pkcs11-devel >= 3.11
+BuildRequires: nss-pkcs11-devel-static
 BuildRequires: httpd-devel >= 0:2.0.52, apr-devel, apr-util-devel
-BuildRequires: pkgconfig, automake
+BuildRequires: pkgconfig, autoconf, automake, libtool
 BuildRequires: openldap-devel >= 2.2.29
 Requires: mod_nss >= 1.0.8
 Patch1: mod_revocator-libpath.patch
 Patch2: mod_revocator-kill.patch
+Patch3: mod_revocator-segfault-fix.patch
+Patch4: mod_revocator-32-bit-semaphore-fix.patch
+Patch5: mod_revocator-array-size.patch
 
 %description
 The mod_revocator module retrieves and installs remote
@@ -24,8 +28,13 @@ Certificate Revocate Lists (CRLs) into an Apache web server.
 %setup -q
 %patch1 -p1
 %patch2 -p1
+%patch3 -p1
+%patch4 -p1
+%patch5 -p1
 
 %build
+autoreconf -fvi
+
 # Needed for ppc64, automake can't be run here
 for file in %{_datadir}/automake-*/config.{guess,sub}
 do
@@ -96,9 +105,62 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/crlhelper
 
 %changelog
-* Tue Jan 11 2011 Rob Crittenden <rcritten@redhat.com> - 1.0.3-1
-- Update to upstream 1.0.3 (#584103)
-- Port forward kill patch from RHEL 5.6
+* Thu Oct 27 2011 Matthew Harmsen <mharmsen@redhat.com> - 1.0.3-9
+- Bugzilla Bug #749696 - httpd (32 bit) failed to start if mod_revocator
+  (32 bit) is installed on ppc64
+
+* Fri Oct 21 2011 Matthew Harmsen <mharmsen@redhat.com> - 1.0.3-8
+- Bugzilla Bug #748577 - mod_revocator does not shut down httpd server if
+  expired CRL is fetched
+- Bugzilla Bug #748579 - mod_revocator does not bring down httpd server if
+  CRLUpdate fails
+
+* Tue Oct 11 2011 Matthew Harmsen <mharmsen@redhat.com> - 1.0.3-6
+- Bugzilla Bug #746365 - CRLS are not downloaded when mod_revocator module
+  is loaded successfully. And no error was thrown in httpd error_log -
+  mharmsen
+- Add 'autoreconf -fvi' to build section - mharmsen
+- Fix shutting down Apache if CRLUpdateCritical is on and a CRL
+  is not available at startup (#654378) - rcritten@redhat.com
+- Updated mod_revocator-kill patch. The ownership of the semaphore used to
+  control access to crlhelper was not always changed to the Apache user
+  (#648546) - rcritten@redhat.com
+- Actually apply the patch (#648546) - rcritten@redhat.com
+- Fix killing the web server if updatecritical is set (#648546) -
+  rcritten@redhat.com
+
+* Mon Mar  7 2011 Rob Crittenden <rcritten@redhat.com> - 1.0.3-4
+- Use correct package name, nss-pkcs11-devel-static (#640293)
+
+* Tue Feb 08 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.3-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
+
+* Tue Oct  4 2010 Rob Crittenden <rcritten@redhat.com> - 1.0.3-2
+- Add BuildRequires: nss-pkcs11-static (#640293)
+
+* Tue Apr 14 2010 Rob Crittenden <rcritten@redhat.com> - 1.0.3-1
+- Update to upstream 1.0.3
+
+* Sat Jul 25 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.2-8
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
+
+* Wed Mar 04 2009 Robert Scheck <robert@fedoraproject.org> - 1.0.2-7
+- Solve the ppc64-redhat-linux-gnu configure target error
+
+* Wed Feb 25 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.2-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_11_Mass_Rebuild
+
+* Mon Aug 11 2008 Tom "spot" Callaway <tcallawa@redhat.com> - 1.0.2-5
+- fix license tag
+
+* Mon Feb 25 2008 Rob Crittenden <rcritten@redhat.com> 1.0.2-4
+- The nss package changed the location of the NSS shared libraries to /lib from
+  /usr/lib. Static libraries remained in /usr/lib. They then updated their
+  devel package to put symlinks back from /lib to /usr. Respin to pick that up.
+  BZ 434395.
+
+* Tue Feb 19 2008 Fedora Release Engineering <rel-eng@fedoraproject.org> - 1.0.2-3
+- Autorebuild for GCC 4.3
 
 * Wed Dec  5 2007 Rob Crittenden <rcritten@redhat.com> 1.0.2-2
 - Respin to pick up new openldap
