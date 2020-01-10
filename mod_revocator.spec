@@ -5,11 +5,11 @@
 
 Name: mod_revocator
 Version: 1.0.3
-Release: 19%{?dist}
+Release: 21%{?dist}
 Summary: CRL retrieval module for the Apache HTTP server
 Group: System Environment/Daemons
 License: ASL 2.0
-URL: http://directory.fedoraproject.org/wiki/Mod_revocator
+URL: https://fedorahosted.org/mod_revocator/
 Source: http://directory.fedoraproject.org/sources/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: nspr-devel >= 4.6, nss-devel >= 3.11.9
@@ -26,6 +26,8 @@ Patch4: mod_revocator-32-bit-semaphore-fix.patch
 Patch5: mod_revocator-array-size.patch
 Patch6: mod_revocator-waitpid.patch
 Patch7: mod_revocator-man.patch
+# Clean up semaphore on shutdown
+Patch8: mod_revocator-clean-semaphore.patch
 
 %description
 The mod_revocator module retrieves and installs remote
@@ -40,6 +42,7 @@ Certificate Revocate Lists (CRLs) into an Apache web server.
 %patch5 -p1
 %patch6 -p1
 %patch7 -p1
+%patch8 -p1
 
 %build
 autoreconf -fvi
@@ -138,6 +141,13 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/crlhelper
 
 %changelog
+* Tue Aug  9 2016 Rob Crittenden <rcritten@redhat.com> - 1.0.3-21
+- Respin to fix segfault in cleanup call. (#1326840)
+
+* Mon Aug  8 2016 Rob Crittenden <rcritten@redhat.com> - 1.0.3-20
+- Clean up semaphore in crlhelper on shutdown (#1326840)
+- Update URL to https://fedorahosted.org/mod_revocator/
+
 * Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1.0.3-19
 - Mass rebuild 2014-01-24
 

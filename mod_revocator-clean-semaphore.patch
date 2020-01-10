@@ -1,0 +1,95 @@
+From 1ae96f0e2befb602a8e1b63f642e525df5b44bb8 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Fri, 5 Aug 2016 18:22:00 -0400
+Subject: [PATCH] Fix leaking semaphore on shutdown
+
+When Apache kills its children it does so with a SIGTERM.
+This wasn't being handled so the semaphore used to do locking
+for the crlhelper wasn't being removed.
+
+Add a signal handler to catch SIGTERM and perform cleanup.
+
+Resolves: #1326840
+
+---
+ crlhelper.cpp | 43 ++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 32 insertions(+), 11 deletions(-)
+
+diff --git a/crlhelper.cpp b/crlhelper.cpp
+index f0a5b8a..719f8ff 100644
+--- a/crlhelper.cpp
++++ b/crlhelper.cpp
+@@ -98,16 +98,41 @@ static void printList(Node *list)
+ 
+ /* global variables */
+ Node *urlcache = NULL;
++int semid = 0;
++PRFileDesc *in = NULL;
++PRFileDesc *out = NULL;
++
++void cleanup() {
++    union semun semarg;
++
++    freeList(urlcache);
++    if (in) {
++        PR_Close(in);
++        in = NULL;
++    }
++    if (NSS_IsInitialized()) {
++        NSS_Shutdown();
++    }
++
++    /* Remove the semaphore used for locking here. This is because this
++     * program only goes away when Apache shuts down so we don't have to
++     * worry about reloads.
++     */
++    semctl(semid, 0, IPC_RMID, semarg);
++}
++
++void signalhandler(int signo) {
++    if (signo == SIGTERM) {
++        cleanup();
++    }
++}
+ 
+ int main(int argc, char ** argv)
+ {
+     SECStatus rv;
+     PRInt32 numfds;
+-    PRFileDesc *in;
+-    PRFileDesc *out;
+     PRPollDesc pd;
+     PRIntervalTime timeout = PR_INTERVAL_NO_TIMEOUT;
+-    int semid;
+     pid_t parent_pid;
+     union semun semarg;
+     char buf[4096];
+@@ -121,6 +146,8 @@ int main(int argc, char ** argv)
+     PRInt32 len = 0;
+     PRInt32 errnum = -1;
+ 
++    signal(SIGTERM, signalhandler);
++
+     /* Close all fds but stdin, stdout and stderr */
+     fd = 3;
+     while (fd < fdlimit)
+@@ -290,14 +317,8 @@ done:
+             }
+         } /* end POLL */
+     } /* end while */
+-    freeList(urlcache);
+-    PR_Close(in);
+-    NSS_Shutdown();
+ 
+-    /* Remove the semaphore used for locking here. This is because this
+-     * program only goes away when Apache shuts down so we don't have to
+-     * worry about reloads.
+-     */
+-    semctl(semid, 0, IPC_RMID, semarg);
++    cleanup();
++
+     return 0;
+ }
+-- 
+1.8.3.1
+
