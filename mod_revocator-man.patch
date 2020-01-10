@@ -1,0 +1,220 @@
+diff -rupN mod_revocator-1.0.3.orig/crlhelper.8 mod_revocator-1.0.3/crlhelper.8
+--- mod_revocator-1.0.3.orig/crlhelper.8	1969-12-31 16:00:00.000000000 -0800
++++ mod_revocator-1.0.3/crlhelper.8	2013-07-03 18:42:58.000000000 -0700
+@@ -0,0 +1,97 @@
++.\" A man page for crlhelper
++.\"
++.\" Licensed under the Apache License, Version 2.0 (the "License");
++.\" you may not use this file except in compliance with the License.
++.\" You may obtain a copy of the License at
++.\"
++.\"      http://www.apache.org/licenses/LICENSE-2.0
++.\"
++.\" Unless required by applicable law or agreed to in writing, software
++.\" distributed under the License is distributed on an "AS IS" BASIS,
++.\" WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++.\" See the License for the specific language governing permissions and
++.\" limitations under the License.
++.\"
++.\" Author: Rob Crittenden <rcritten@redhat.com>
++.\"
++.TH "crlhelper" "8" "Jul 3 2013" "Rob Crittenden" ""
++.SH "NAME"
++crlhelper \- Helper program used to store-and-forward CRLs
++
++.SH "SYNOPSIS"
++crlhelper <semid> <parentpid> <directory> [prefix]
++
++.SH "DESCRIPTION"
++A helper program used by the Apache \fBhttpd\fP mod_revocator plug-in to
++store-and-forward CRLs from upstream to the various Apache processes in
++the preform MPM. This saves each process from having to fetch the CRL itself.
++This is not expected to be run by end-users.
++.PP
++The mod_revocator plug-in requires the mod_nss plug-in to also be registered
++with this Apache \fBhttpd\fP process.
++.PP
++Whenever an Apache \fBhttpd\fP process configured to use the mod_revocator
++plug-in is started, this program will be automatically invoked via reference
++to the mod_revocator configuration file stored under
++\fB/etc/httpd/conf.d/revocator.conf\fP which contains the following default
++entry:
++.IP
++#   CRL Helper:
++.br
++#   This helper program does the actual CRL retrieval
++.br
++#
++.br
++#   NOTE:  Located at '/usr/bin/crlhelper' prior
++.br
++#          to 'mod_revocator-1.0.3-16'.
++.br
++#
++.br
++CRLHelper /usr/libexec/crlhelper
++
++.SH OPTIONS
++.TP
++.B <semid>
++The semaphore which corresponds to the mod_revocator plug-in registered with the Apache \fBhttpd\fP process during startup.
++.TP
++.B <parentpid>
++The primary parent pid of the Apache \fBhttpd\fP process into which both the mod_nss and mod_revocator plug-ins have been loaded.
++.TP
++.B <directory>
++Since the mod_revocator plug-in depends upon the mod_nss plug-in being configured, this option specifies the destination directory of the NSS databases that will be associated with this executable specified by the following entry in the mod_nss plug-in's \fB/etc/httpd/conf.d/nss.conf\fP configuration file:
++.IP
++.TS
++tab(;);
++ll,ll.
++;#   Server Certificate Database:
++;#   The NSS security database directory that holds the
++;#   certificates and keys. The database consists
++;#   of 3 files: cert8.db, key3.db and secmod.db.
++;#   Provide the directory that these files exist.
++;NSSCertificateDatabase /etc/httpd/alias
++.TE
++.TP
++.B [prefix]
++Optional prefix to attach prior to the names of the NSS certificate and key databases contained in the directory referenced by the previous argument and specified by the following entry in mod_nss plug-in's \fB/etc/httpd/conf.d/nss.conf\fP configuration file (must be uncommented in order to be utilized):
++.IP
++.TS
++tab(;);
++ll,ll.
++;#   Database Prefix:
++;#   In order to be able to store multiple NSS databases
++;#   in one directory they need unique names. This option
++;#   sets the database prefix used for cert8.db and key3.db.
++;#NSSDBPrefix my-prefix-
++.TE
++
++.SH BUGS
++Report bugs to http://bugzilla.redhat.com.
++
++.SH AUTHORS
++Rob Crittenden <rcritten@redhat.com>.
++
++.SH COPYRIGHT
++Copyright (c) 2013 Red Hat, Inc. This is licensed under the Apache License, Version 2.0 (the "License"); no one may use this file except in compliance with the License. A copy of this license is available at http://www.apache.org/licenses/LICENSE-2.0.
++.PP
++Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
+diff -rupN mod_revocator-1.0.3.orig/crlhelper.cpp mod_revocator-1.0.3/crlhelper.cpp
+--- mod_revocator-1.0.3.orig/crlhelper.cpp	2013-07-02 17:03:45.000000000 -0700
++++ mod_revocator-1.0.3/crlhelper.cpp	2013-07-03 19:08:13.000000000 -0700
+@@ -127,7 +127,7 @@ int main(int argc, char ** argv)
+         close(fd++);
+ 
+     if (argc < 4 || argc > 5) {
+-        fprintf(stderr, "Usage: crlhelper <semid> <parentpid> <directory> <prefix>\n");
++        fprintf(stderr, "Usage: crlhelper <semid> <parentpid> <directory> [prefix]\n");
+         exit(1);
+     }
+ 
+diff -rupN mod_revocator-1.0.3.orig/ldapget.8 mod_revocator-1.0.3/ldapget.8
+--- mod_revocator-1.0.3.orig/ldapget.8	1969-12-31 16:00:00.000000000 -0800
++++ mod_revocator-1.0.3/ldapget.8	2013-07-03 19:23:11.000000000 -0700
+@@ -0,0 +1,76 @@
++.\" A man page for ldapget
++.\"
++.\" Licensed under the Apache License, Version 2.0 (the "License");
++.\" you may not use this file except in compliance with the License.
++.\" You may obtain a copy of the License at
++.\"
++.\"      http://www.apache.org/licenses/LICENSE-2.0
++.\"
++.\" Unless required by applicable law or agreed to in writing, software
++.\" distributed under the License is distributed on an "AS IS" BASIS,
++.\" WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++.\" See the License for the specific language governing permissions and
++.\" limitations under the License.
++.\"
++.\" Author: Rob Crittenden <rcritten@redhat.com>
++.\"
++.TH "ldapget" "8" "Jul 3 2013" "Rob Crittenden" ""
++.SH "NAME"
++ldapget \- Tool used to fetch URLs via LDAP/LDAPS
++
++.SH "SYNOPSIS"
++ldapget [NSS database] <url>
++
++.SH "DESCRIPTION"
++A tool supplied with the Apache \fBhttpd\fP mod_revocator plug-in used to demonstrate how CRLs can be fetched using LDAP/LDAPS without the use of any direct LDAP/LDAPS URLs.
++.PP
++The mod_revocator plug-in requires the mod_nss plug-in to also be registered
++with this Apache \fBhttpd\fP process.
++.PP
++Prior to \fBmod_revocator-1.0.3-16\fP, this tool was located at \fB/usr/bin/ldapget\fP.
++
++.SH OPTIONS
++.TP
++.B [NSS database]
++Optionally specifies the destination directory where the NSS databases reside.  If this parameter is not provided, the location specified in mod_nss plug-in's \fB/etc/httpd/conf.d/nss.conf\fP configuration file will be utilized:
++.IP
++.TS
++tab(;);
++ll,ll.
++;#   Server Certificate Database:
++;#   The NSS security database directory that holds the
++;#   certificates and keys. The database consists
++;#   of 3 files: cert8.db, key3.db and secmod.db.
++;#   Provide the directory that these files exist.
++;NSSCertificateDatabase /etc/httpd/alias
++.TE
++.TP
++.B <url>
++.br
++The LDAP/LDAPS URL utilized to fetch the CRL.  The following entry in mod_revocator plug-in's \fB/etc/httpd/conf.d/revocator.conf\fP configuration file contains a sample utilization of this executable (the line containing \fBldapget\fP must be uncommented in order to be utilized):
++.IP
++.TS
++tab(+);
++ll,ll.
+++#   CRL URLs:
+++#   A space delimited list of URLs to retrieve and install.
+++#        protocol://urldata;update_interval;max_age
+++#CRLFile "ldap://ldap.example.com:5000/o=example.net?
+++usercertificate%3binary?sub?(sn=Jensen)??;30;30"
+++\fB#CRLFile "exec:///usr/sbin/ldapget|ldap://ldap.example.com:
+++3389/o=example.com?userCertificate%3bbinary?sub?
+++(uid=crl)??;30;30"\fP
+++#CRLFile "https://ca.example.com:1025/getCRL?op=
+++getCRL&issuepoint=MasterCRL;30;30"
++.TE
++
++.SH BUGS
++Report bugs to http://bugzilla.redhat.com.
++
++.SH AUTHORS
++Rob Crittenden <rcritten@redhat.com>.
++
++.SH COPYRIGHT
++Copyright (c) 2013 Red Hat, Inc. This is licensed under the Apache License, Version 2.0 (the "License"); no one may use this file except in compliance with the License. A copy of this license is available at http://www.apache.org/licenses/LICENSE-2.0.
++.PP
++Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
+diff -rupN mod_revocator-1.0.3.orig/ldapget.cpp mod_revocator-1.0.3/ldapget.cpp
+--- mod_revocator-1.0.3.orig/ldapget.cpp	2010-04-13 07:11:11.000000000 -0700
++++ mod_revocator-1.0.3/ldapget.cpp	2013-07-03 19:08:38.000000000 -0700
+@@ -45,7 +45,7 @@ main( int argc, char **argv )
+     const char *url;
+ 
+     if (argc < 2 || argc > 4) {
+-        printf("Usage: %s <NSS database> url\n", argv[0]);
++        printf("Usage: %s [NSS database] <url>\n", argv[0]);
+         return 1;
+     }
+ 
+diff -rupN mod_revocator-1.0.3.orig/revocator.conf mod_revocator-1.0.3/revocator.conf
+--- mod_revocator-1.0.3.orig/revocator.conf	2013-07-02 17:03:44.000000000 -0700
++++ mod_revocator-1.0.3/revocator.conf	2013-07-03 17:53:11.000000000 -0700
+@@ -15,7 +15,10 @@ CRLUpdateCritical off
+ 
+ #   CRL Helper:
+ #   This helper program does the actual CRL retrieval
+-CRLHelper /usr/bin/crlhelper
++#
++#   NOTE:  Located at '/usr/bin/crlhelper' prior to 'mod_revocator-1.0.3-16'.
++#
++CRLHelper /usr/libexec/crlhelper
+ 
+ #   CRL URLs:
+ #   A space delimited list of URLs to retrieve and install.

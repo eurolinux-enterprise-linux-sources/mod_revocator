@@ -1,0 +1,19 @@
+Mon Apr 12 2010  Rob Crittenden <rcritten@redhat.com>
+    * Change initialization model to work with NSS > 3.11.9 and mod_nss 1.0.8.
+    * Use external helper program to retrieve CRLs so every Apache child
+      won't all retrieve the same CRL from the source.
+    * tagged mod_revocator 1.0.3
+
+Tue Jun  6 2007  Rob Crittenden <rcritten@redhat.com>
+    * Include If-Modified-Since header on HTTP/S requests so we don't try
+      to retrieve and install a CRL that hasn't changed.
+
+Tue Oct 17 2006  Rob Crittenden <rcritten@redhat.com>
+    * mod_revocator 1.0.2 is tagged
+    * Fix a slew of compilation warnings
+    * Fix Makefile so it can be built in parallel (make -j 3)
+    * Add support for OpenLDAP as the LDAP library
+    * Improve the documentation 
+
+Tue Apr  3 2006  Rob Crittenden <rcritten@redhat.com>
+    * Beta 1 tagged

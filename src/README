@@ -1,0 +1,180 @@
+LICENSE
+
+Copyright (c) 2006  Red Hat, Inc. All rights reserved.
+
+This copyrighted material is made available to anyone wishing to use,
+modify, copy, or redistribute it subject to the terms and conditions of
+the Apache License, 2.0.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY expressed or implied, including the implied warranties of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  A copy of this
+license is available at http://www.opensource.org/licenses.  Any Red Hat
+trademarks that are incorporated in the source code or documentation are
+not subject to the Apache License, 2.0 and may only be used or replicated
+with the express permission of Red Hat, Inc.
+
+Red Hat Author(s): Rob Crittenden
+
+SYNOPSIS
+
+ This Apache module lets the user configure remote Certificate Revocation
+ Lists (CRLs) to be downloaded and installed automatically on a regular
+ basis without restarting the server. This helps ensure that the CRLs are
+ kept up-to-date with minimal effort. The module can also bring the server
+ down if the CRL expires and a new one cannot be obtained.
+
+ This module requires that mod_nss also be installed.
+
+BUILDING
+
+ To build this you'll need NSPR 4.4.1 and NSS 3.9.3. Either the Mozilla LDAP
+ SDK 5.15 or higher or OpenLDAP 2.2.29 or higher is also required. It will
+ not work with earlier versions of NSS due to an API change.
+ 
+ The --with-nspr, --with-nss and --with-ldapsdk  tags require that the
+ package be installed in the same parent directory (e.g. /opt/nspr,
+ /usr/local/nspr, etc). It will look in this parent for include/, lib/, etc.
+ Alternatively you can use -inc and -lib to specify separate locations for
+ each one (--with-nspr-inc, --with-nspr-lib, --with-nss-inc, etc).
+ 
+ If --with-nss or --with-nspr are not passed configure will look for the
+ mozilla-[nss|nspr]-devel packages and use the libraries with that if found.
+ It is strongly recommended that the mozilla.org version be used instead.
+
+ To use OpenLDAP pass in --enable-openldap and do not use any of the
+ --with-ldap* directives. It assumes that the OpenLDAP headers are in
+ /usr/include and the libraries are resolvable by the loader without
+ passing -L.
+
+ Build and install those packages somewhere then configure the module with
+ something like:
+
+ % ./configure --with-apxs[=/path/to/apxs/] --with-nspr=/path/to/nspr/ --with-ns
+s=/path/to/nss/ --with-ldapsd=/path/to/ldapsdk
+ % gmake all install
+
+ You only need to use =/path/to/apxs if apxs isn't in your path or if you
+ want to install into a specific Apache installation.
+
+ This just installs the library librevocation.so. You will need to manually
+ install the Apache module at this point. A sample configuration file is
+ provided in revocator.conf.
+
+ NSPR and NSS are both included with Fedora Core 5 but the NSS that ships
+ lacks libnssb.a so it is not possible to build against that. FC5 also
+ doesn't ship the Mozilla LDAP SDK.
+
+ IMPORTANT: This is not at all well-tested against mozldap. Chances are
+            very good that it no longer works.
+
+CONFIGURATION
+
+ CRLHelper (/path/to/crlhelper). The full path to the crlhelper program
+ which does the actual downloading of remote CRLs.
+
+ CRLEngine (on/off). This turns on/off CRL revocation. This actives the
+ automatic CRL retrieval for this server.
+
+ CRLUpdateCritical (on/off). Shut down server if CRL updates fail. 
+
+ CRLAgeCheck (on/off). Shut down server if CRLs are too old. The server will
+ shut down if the age of a downloaded CRL exceeds the time specified in its
+ Next Update field. This condition indicates that the CRL may not contain
+ the most recent information available. To avoid the possibility of users
+ authenticating with compromised certificates that would have been added 
+ to an up-to-date CRL, you can choose to have the server shut down
+ automatically when a CRL is considered too old.
+
+ This check is performed when the CRL is downloaded. Therefore, an already
+ downloaded CRL can become older than its Next Update time in the interval
+ between updates and still be considered valid. This feature does not apply
+ to CRLs that do not have a Next Update field.
+
+ CRLFile. A space-delimited list of protocol://urldata;update_interval;max_age
+ If multiple remote locations are listed then the value will need to be
+ enclosed in double-quotes.
+
+ This specifies the URL(s) of remote CRLs to retrieve and install.
+ mod_revocator can download CRLs over HTTP, HTTP over SSL, LDAP, and LDAP
+ over SSL. You can also specify a binary executable to retrieve the data.
+ This executable must return the data via stdout. The executable option
+ is primarily to work around LDAP library resolution problem but any
+ executable may be used. For LDAP you may only retrieve one attribute.
+ Valid URL formats are:
+
+    * ldap[s]://hostname:port/base_dn?attributes?scope?filter
+
+      For example:
+       
+      ldap://ldap.example.com:5000/o=example.net?usercertificate%3binary
+      telephoneNumber?sub?(sn=Jensen)??
+
+    * http[s]://username:password@hostname:port/path[?query_string]
+
+      For example:
+       
+      https://ca.example.com:1025/getCRL?op=getCRL&issuepoint=MasterCRL
+
+    * exec://path/to/program|argument1|...|argumentn
+
+      For example:
+
+      exec:///opt/fortitude/bin/ldapget|ldap://ldap.example.com:3389/
+      o=example.com?userCertificate%3bbinary?sub?(uid=crl)??
+
+  The ldapget program is supplied to demonstrate how this works and to
+  provide LDAP/S support. The usage for ldapget is:
+
+  /path/to/ldapget [/path/to/certdatabase] ldap://...
+
+  update_interval specifies the maximum amount of time in minutes to allow
+  between CRL downloads.
+
+  At startup, mod_revocator downloads all CRLs configured for automatic
+  downloading. To determine the time of the next download, mod_revocator
+  uses this value or the time specified in the Next Update field of the
+  CRL, whichever is sooner. Not all CRLs have a Next Update field, however,
+  so you must specify an update interval for each CRL.
+
+  To determine an appropriate update interval, consider the network
+  connectivity and available bandwidth at your site and how often the CRL
+  is updated.
+
+  max_age specifies the time in minutes you want mod_revocator to wait
+  past the time indicated in the CRL's Next Update field before
+  determining that the CRL is too old to be valid.
+
+  To avoid unnecessary shutdowns, it is recommended that you set this value
+  no lower than 5 minutes and take into account possible system time
+  differences between the server host and the CA's CRL download server. 
+
+  If you have not enabled the option CRLUpdateCritical then the value
+  specified in this field has no impact. A good starting value is 60 minutes. 
+
+  A sample config in httpd.conf might look like:
+
+    CRLEngine on
+    CRLFile http://somehost.example.com/MasterCRL.crl;60;60 
+    CRLAgeCheck off
+    CRLUpdateCritical off
+    CRLHelper /usr/bin/crlhelper
+
+DEVELOPERS
+
+  This module uses some internals from NSS. This is normally a big no-no but
+  there was no other way to get around it. As such a private copy of some
+  of the NSS include files can be found in the mozilla subdirectory. If you
+  use a version of NSS other than 3.9.3 then you should replace the files in
+  this directory with appropriate files from whatever version you are using.
+
+  NSS 3.9.3 introduced a new locking mechanism for PKCS#11 modules. As such
+  the CKFW interface changed slightly so the nsprstub.cpp in this module
+  will not work with previous versions of NSS.
+
+LIBRARIES 
+
+  mod_nss can be retreved from http://directory.fedora.redhat.com/wiki/Mod_nss
+  NSS is available at http://www.mozilla.org/projects/security/pki/nss/
+  NSPR is available at http://www.mozilla.org/projects/nspr/
+  LDAPSDK is available at http://www.mozilla.org/directory/csdk.html
