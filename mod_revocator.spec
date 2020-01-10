@@ -1,6 +1,6 @@
 Name: mod_revocator
 Version: 1.0.3
-Release: 10%{?dist}
+Release: 11%{?dist}
 Summary: CRL retrieval module for the Apache HTTP server
 Group: System Environment/Daemons
 License: ASL 2.0
@@ -20,6 +20,9 @@ Patch3: mod_revocator-segfault-fix.patch
 Patch4: mod_revocator-32-bit-semaphore-fix.patch
 Patch5: mod_revocator-array-size.patch
 Patch6: mod_revocator-waitpid.patch
+#Patch7: mod_revocator-man.patch
+# Clean up semaphore on shutdown
+Patch8: mod_revocator-clean-semaphore.patch
 
 %description
 The mod_revocator module retrieves and installs remote
@@ -33,6 +36,8 @@ Certificate Revocate Lists (CRLs) into an Apache web server.
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
+#%patch7 -p1
+%patch8 -p1
 
 %build
 autoreconf -fvi
@@ -107,6 +112,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/crlhelper
 
 %changelog
+* Wed Aug 24 2016 Matthew Harmsen <mharmsen@redhat.com> - 1.0.3-11
+- Backported patch from Rob Crittenden
+- Clean up semaphore in crlhelper on shutdown (#1326841)
+- Update URL to https://fedorahosted.org/mod_revocator/
+- Respin to fix segfault in cleanup call. (#1326841)
+
 * Mon Oct  8 2012 Matthew Harmsen <mharmsen@redhat.com> - 1.0.3-10
 - Bugzilla Bug #861999 - mod_revocator exec CLR URIs fail to load: unable to
   load Revocation module, NSS error -8187 - stephen.capstick64@gmail.com
